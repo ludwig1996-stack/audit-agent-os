@@ -110,37 +110,59 @@ export default function EvidenceVault() {
                     ) : evidence.length === 0 ? (
                         <div className="text-center py-8 text-zinc-800 font-mono text-[9px] uppercase">No vault entries detected.</div>
                     ) : (
-                        evidence.map(item => (
-                            <div
-                                key={item.id}
-                                onClick={() => setSelectedItem(item)}
-                                className={`p-3 bg-white/[0.02] border rounded transition-all cursor-pointer space-y-2 group ${selectedItem?.id === item.id ? 'border-terminal-amber bg-terminal-amber/5' : 'border-white/5 hover:border-terminal-amber/30'
-                                    }`}
-                            >
-                                <div className="flex justify-between items-center">
-                                    <span className={`px-1.5 py-0.5 rounded-[2px] text-[9px] font-bold ${item.type === 'RISK' ? 'bg-red-500/20 text-red-500' :
-                                        item.type === 'AML' ? 'bg-terminal-amber/20 text-terminal-amber' :
-                                            'bg-terminal-green/20 text-terminal-green'
-                                        }`}>
-                                        {item.type}
-                                    </span>
-                                    <span className="text-zinc-600 text-[9px] font-mono group-hover:text-zinc-400 transition-colors uppercase">
-                                        {item.integrity_hash ? `HASH: ${item.integrity_hash.substring(0, 8)}` : `ID: ${item.id.substring(0, 4)}`}
-                                    </span>
+                        evidence.map(item => {
+                            // Calculate balance status on the fly for the list view
+                            const entries = item.content_json?.journal_suggestions || [];
+                            const dr = entries.reduce((s: number, e: any) => s + (Number(e.debit) || 0), 0);
+                            const cr = entries.reduce((s: number, e: any) => s + (Number(e.credit) || 0), 0);
+                            const isBalanced = entries.length > 0 && Math.abs(dr - cr) < 0.01;
+                            const hasEntries = entries.length > 0;
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    onClick={() => setSelectedItem(item)}
+                                    className={`p-3 bg-white/[0.02] border rounded transition-all cursor-pointer space-y-2 group ${selectedItem?.id === item.id ? 'border-terminal-amber bg-terminal-amber/5' : 'border-white/5 hover:border-terminal-amber/30'
+                                        }`}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-1.5 py-0.5 rounded-[2px] text-[9px] font-bold ${item.type === 'RISK' ? 'bg-red-500/20 text-red-500' :
+                                                item.type === 'AML' ? 'bg-terminal-amber/20 text-terminal-amber' :
+                                                    'bg-terminal-green/20 text-terminal-green'
+                                                }`}>
+                                                {item.type}
+                                            </span>
+                                            {/* The "Red Dot" / Balance Indicator the user requested */}
+                                            {hasEntries && !isBalanced && (
+                                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" title="Unbalanced Journal" />
+                                            )}
+                                        </div>
+                                        <span className="text-zinc-600 text-[9px] font-mono group-hover:text-zinc-400 transition-colors uppercase">
+                                            {item.integrity_hash ? `HASH: ${item.integrity_hash.substring(0, 8)}` : `ID: ${item.id.substring(0, 4)}`}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-zinc-300 font-semibold group-hover:text-white transition-colors line-clamp-1">{item.title}</div>
+                                    <div className="text-[10px] text-zinc-500 font-mono italic flex justify-between">
+                                        <span>
+                                            {new Intl.DateTimeFormat('sv-SE', {
+                                                year: 'numeric',
+                                                month: '2-digit',
+                                                day: '2-digit',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                second: '2-digit'
+                                            }).format(new Date(item.created_at))}
+                                        </span>
+                                        {hasEntries && (
+                                            <span className={isBalanced ? "text-zinc-600" : "text-red-400 font-bold"}>
+                                                {isBalanced ? "BALANCED" : "⚠️ UNBALANCED"}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="text-sm text-zinc-300 font-semibold group-hover:text-white transition-colors line-clamp-1">{item.title}</div>
-                                <div className="text-[10px] text-zinc-500 font-mono italic">
-                                    {new Intl.DateTimeFormat('sv-SE', {
-                                        year: 'numeric',
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        second: '2-digit'
-                                    }).format(new Date(item.created_at))}
-                                </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>
