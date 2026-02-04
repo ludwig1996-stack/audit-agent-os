@@ -45,6 +45,7 @@ export default function EvidenceVault() {
                         </div>
                     ))}
                 </div>
+            </div>
         </aside>
     );
 }
