@@ -15,17 +15,36 @@ export default function EvidenceVault() {
     const [evidence, setEvidence] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [error, setError] = useState<string | null>(null);
+    const [debugInfo, setDebugInfo] = useState<string>("");
+
     const fetchEvidence = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('audit_workpapers')
-            .select('*')
-            .order('created_at', { ascending: false });
+        setError(null);
+        console.log("Fetching evidence from Supabase...");
 
-        if (!error && data) {
-            setEvidence(data);
+        try {
+            const { data, error: supabaseError } = await supabase
+                .from('audit_workpapers')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (supabaseError) {
+                console.error("Supabase fetch error:", supabaseError);
+                setError(supabaseError.message);
+                setDebugInfo(`Error: ${supabaseError.message}`);
+            } else if (data) {
+                console.log(`Successfully fetched ${data.length} items`);
+                setEvidence(data);
+                setDebugInfo(`Fetched ${data.length} items`);
+            }
+        } catch (err: any) {
+            console.error("Vault fetch exception:", err);
+            setError(err.message);
+            setDebugInfo(`Exception: ${err.message}`);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     useEffect(() => {

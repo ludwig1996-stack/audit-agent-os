@@ -88,9 +88,14 @@ export async function processDocumentAction(formData: FormData) {
         });
 
         revalidatePath('/');
-        return { success: true, data: analysis };
+        console.log("Document processed and saved successfully");
+        return { success: true, data: analysis, saved: true };
     } catch (error: any) {
-        console.error("OCR Process Error:", error);
+        console.error("OCR Process Error Detail:", {
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause
+        });
         return { success: false, error: error.message };
     }
 }
