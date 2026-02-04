@@ -1,17 +1,54 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020617;
-  --foreground: #f8fafc;
+  --background: #000000;
+  --foreground: #e0e0e0;
+  --terminal-amber: #ffb800;
+  --terminal-green: #00ff41;
+  --glass-bg: rgba(20, 20, 20, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 body {
-  color: var(--foreground);
   background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
 }
 
-@layer base {
-  * {
-    @apply border-slate-800;
-  }
+@theme {
+  --color-terminal-amber: var(--terminal-amber);
+  --color-terminal-green: var(--terminal-green);
+  --color-glass: var(--glass-bg);
+}
+
+/* Glassmorphism Utility */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+}
+
+/* Monospaced Data Utility */
+.data-mono {
+  font-family: monospace;
+  letter-spacing: -0.02em;
+}
+
+/* Custom Scrollbar for Terminal feel */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--terminal-amber);
 }

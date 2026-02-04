@@ -8,26 +8,75 @@ if (!apiKey && process.env.NODE_ENV !== 'production') {
 
 export const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-export const getModel = (modelName: 'gemini-1.5-pro' | 'gemini-1.5-flash' = 'gemini-1.5-pro') => {
-    if (!genAI) return null;
-    return genAI.getGenerativeModel({ model: modelName });
-};
-
 /**
- * Audit Agent Reasoning Orchestrator
+ * Audit Agent Reasoning Engine (Digital Auditor)
+ * Specialized in BAS-kontoplanen & ISA Compliance.
  */
-export async function auditReasoning(prompt: string, context: string) {
-    const model = getModel('gemini-1.5-pro');
-    if (!model) throw new Error('AI Engine not initialized');
+export class AuditAgentService {
+    private model: any;
 
-    const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: `Context: ${context}\n\nTask: ${prompt}` }] }],
-        generationConfig: {
-            temperature: 0.1, // High precision for auditing
-            topP: 0.8,
-            topK: 40,
+    constructor() {
+        if (!genAI) throw new Error('AI Engine not initialized');
+
+        this.model = genAI.getGenerativeModel({
+            model: 'gemini-3-pro-preview',
+            // @ts-ignore - thinkingBudget is a newer feature
+            thinkingBudget: 8000
+        });
+    }
+
+    /**
+     * Generate a unique SHA-256 hash for data integrity
+     */
+    static generateIntegrityHash(content: string): string {
+        return require('crypto')
+            .createHash('sha256')
+            .update(content)
+            .digest('hex');
+    }
+
+    async analyzeAuditTask(prompt: string, context: string) {
+        const systemInstruction = `You are a 'Senior Digital Auditor' specialized in Swedish 'BAS-kontoplanen' and International Standards on Auditing (ISA).
+        
+        RULES:
+        1. Always output findings using structured tags: [RISK: description], [AML: description], [MEMO: notes].
+        2. Ensure all analysis aligns with ISA 230, 240, and 315.
+        3. Use Google Search Grounding to verify external vendors and latest tax laws when necessary.
+        4. Focus on Swedish accounting standards.`;
+
+        const result = await this.model.generateContent({
+            contents: [{
+                role: 'user',
+                parts: [{ text: `System Instruction: ${systemInstruction}\n\nContext: ${context}\n\nTask: ${prompt}` }]
+            }],
+            // @ts-ignore - tools configuration
+            tools: [{ google_search_retrieval: {} }],
+            generationConfig: {
+                temperature: 0.1, // High precision
+                topP: 0.8,
+                topK: 40,
+            }
+        });
+
+        const text = result.response.text();
+        const hash = AuditAgentService.generateIntegrityHash(text);
+
+        return {
+            text,
+            integrity_hash: hash,
+            parsed_tags: this.parseAuditTags(text)
+        };
+    }
+
+    private parseAuditTags(text: string) {
+        const tags: { type: string, content: string }[] = [];
+        const regex = /\[(RISK|AML|ENTRY|MEMO): (.*?)\]/g;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            tags.push({ type: match[1], content: match[2] });
         }
-    });
-
-    return result.response.text();
+        return tags;
+    }
 }
+
+export const auditAgent = genAI ? new AuditAgentService() : null;
