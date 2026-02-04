@@ -21,12 +21,12 @@ export class AuditAgentService {
 
         // Main reasoning model
         this.model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-pro-latest',
+            model: 'gemini-1.5-pro',
         });
 
         // Vision/OCR model
         this.visionModel = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash-latest',
+            model: 'gemini-1.5-flash',
         });
     }
 
