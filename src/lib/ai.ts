@@ -74,6 +74,8 @@ export class AuditAgentService {
 
     /**
      * Multimodal Document Analysis (OCR + Audit)
+     * Now validated with Zod for strict type safety.
+     * Uses XML tags for robust output parsing.
      */
     async analyzeDocument(fileBuffer: Buffer, mimeType: string) {
         const prompt = `Perform a high-precision, detailed audit scan of this document. 
@@ -81,17 +83,15 @@ export class AuditAgentService {
         EXTRACT AND SPECIFY:
         1. Entity Identity: Legal name and Swedish Org.nr (if present).
         2. Financial Data: Total Amount (incl. VAT), Currency, and Date of transaction.
-        3. Accounting Intent: Suggest Swedish 'BAS-kontoplan' accounts (e.g., 1930 Bank, 2641 Input VAT, 5xxx Expense).
-        4. ISA-315 Risk Profile: Identify any compliance risks or irregularities.
+        3. Accounting Intent: Suggest Swedish 'BAS-kontoplan' accounts.
+        4. ISA-315 Risk Profile: Identify any compliance risks.
         5. Journal Suggestion: Provide a structured JSON block for suggested journal entries.
         
         OUTPUT FORMATTING RULES:
-        - You MUST include exactly one summary tag in the format: [TYPE: Summary Description]
+        - You MUST wrap your detailed summary in: <audit_summary>TYPE: Description...</audit_summary>
         - TYPES: RISK, AML, ENTRY, or MEMO.
-        - To suggest journal entries, you MUST include a tag: [JOURNAL: {"entries": [{"account": "...", "description": "...", "debit": 0, "credit": 0}]}]
-        - Accounts MUST follow Swedish BAS-kontoplan.
-        - The Summary Description should be at least 3-4 sentences long, detailing EVERYTHING you found (Entity, VAT, Amount, Accounts).
-        - Example: [RISK: Entity: SkiStar AB (556093-6949). Total: 1,500 SEK. Accounts: 1930/6210. The VAT rate is 12% which matches travel services. However, the org.nr has a warning in local registries.]`;
+        - To suggest journal entries, you MUST output a raw JSON block wrapped in: <journal_json>{"entries": [{"account": "...", "description": "...", "debit": 0, "credit": 0}]}</journal_json>
+        - Accounts MUST follow Swedish BAS-kontoplan.`;
 
         const result = await this.visionModel.generateContent([
             prompt,
@@ -105,22 +105,42 @@ export class AuditAgentService {
 
         const text = result.response.text();
         const hash = AuditAgentService.generateIntegrityHash(text);
+        const tags = this.parseAuditTags(text);
+        console.log("DEBUG: Extracted Tags:", tags);
 
         return {
             text,
             integrity_hash: hash,
-            parsed_tags: this.parseAuditTags(text)
+            parsed_tags: tags // Now typed as ParsedFinding[] but partials
         };
     }
 
     private parseAuditTags(text: string) {
         const tags: { type: string, content: string }[] = [];
-        // Support multiline content inside tags
-        const regex = /\[(RISK|AML|ENTRY|MEMO|JOURNAL): ([\s\S]*?)\]/g;
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            tags.push({ type: match[1].trim(), content: match[2].trim() });
+
+        // 1. Extract Summary Tag (XML style)
+        const summaryMatch = text.match(/<audit_summary>([\s\S]*?)<\/audit_summary>/);
+        if (summaryMatch) {
+            const rawContent = summaryMatch[1].trim();
+            // Try to split TYPE: Content
+            const parts = rawContent.split(':');
+            if (parts.length > 1) {
+                const type = parts[0].trim().toUpperCase();
+                // Validate type
+                const validTypes = ['RISK', 'AML', 'ENTRY', 'MEMO'];
+                const safeType = validTypes.includes(type) ? type : 'MEMO';
+                tags.push({ type: safeType, content: rawContent.substring(type.length + 1).trim() });
+            } else {
+                tags.push({ type: 'MEMO', content: rawContent });
+            }
         }
+
+        // 2. Extract Journal JSON (XML style)
+        const journalMatch = text.match(/<journal_json>([\s\S]*?)<\/journal_json>/);
+        if (journalMatch) {
+            tags.push({ type: 'JOURNAL', content: journalMatch[1].trim() });
+        }
+
         return tags;
     }
 }

@@ -86,7 +86,9 @@ export default function EvidenceVault() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide">
-                <AccountingVerification />
+                <AccountingVerification
+                    selectedStartData={selectedItem?.content_json?.journal_suggestions}
+                />
 
                 {/* Formal Workpaper View */}
                 <WorkpaperExport
@@ -128,7 +130,14 @@ export default function EvidenceVault() {
                                 </div>
                                 <div className="text-sm text-zinc-300 font-semibold group-hover:text-white transition-colors line-clamp-1">{item.title}</div>
                                 <div className="text-[10px] text-zinc-500 font-mono italic">
-                                    {new Date(item.created_at).toLocaleString()}
+                                    {new Intl.DateTimeFormat('sv-SE', {
+                                        year: 'numeric',
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit'
+                                    }).format(new Date(item.created_at))}
                                 </div>
                             </div>
                         ))

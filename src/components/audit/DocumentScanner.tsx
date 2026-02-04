@@ -12,9 +12,14 @@ export default function DocumentScanner() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        console.log("CLIENT: handleFileChange triggered");
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (!file) {
+            console.log("CLIENT: No file selected");
+            return;
+        }
 
+        console.log("CLIENT: File selected:", file.name);
         setIsScanning(true);
         setScanComplete(false);
         setError(null);
@@ -33,6 +38,11 @@ export default function DocumentScanner() {
                     }));
                 } else {
                     console.warn("DocumentScanner: No journal suggestions found in result");
+                    // Dispatch empty event to at least notify user "scan done" or handle in UI
+                    window.dispatchEvent(new CustomEvent('ai-journal-suggested', {
+                        detail: { entries: [] }
+                    }));
+                    alert("Analysis complete, but no specific journal entries were generated.");
                 }
             } else {
                 setError(result.error || "Failed to process document");
@@ -51,6 +61,7 @@ export default function DocumentScanner() {
 
     return (
         <div className="p-4 glass-panel rounded-lg border-white/5 bg-white/[0.01] space-y-4 relative overflow-hidden">
+            {/* Hidden Input for Clean UI */}
             <input
                 type="file"
                 ref={fileInputRef}
@@ -115,12 +126,15 @@ export default function DocumentScanner() {
             <AnimatePresence>
                 {error && (
                     <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="text-[9px] text-red-500 font-mono flex items-center gap-1.5 bg-red-500/5 p-1 rounded"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-[10px] text-white font-bold bg-red-500/90 p-3 rounded shadow-lg border border-red-400/50 flex flex-col gap-1 backdrop-blur-md"
                     >
-                        <AlertCircle size={10} />
-                        {error}
+                        <div className="flex items-center gap-2">
+                            <AlertCircle size={14} className="text-white" />
+                            <span>SYSTEM ERROR</span>
+                        </div>
+                        <span className="font-mono text-[9px] opacity-90">{error}</span>
                     </motion.div>
                 )}
             </AnimatePresence>

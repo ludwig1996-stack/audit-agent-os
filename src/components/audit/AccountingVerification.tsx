@@ -13,7 +13,11 @@ interface EntryRow {
     credit: number;
 }
 
-export default function AccountingVerification() {
+interface AccountingVerificationProps {
+    selectedStartData?: any[];
+}
+
+export default function AccountingVerification(props: AccountingVerificationProps) {
     const [entries, setEntries] = useState<EntryRow[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -37,10 +41,11 @@ export default function AccountingVerification() {
     };
 
     React.useEffect(() => {
-        const handleAISuggestion = (event: any) => {
+        const handleAISuggestion = async (event: any) => {
             console.log("AccountingVerification received ai-journal-suggested event:", event.detail);
             const suggestedEntries = event.detail.entries;
-            if (suggestedEntries && Array.isArray(suggestedEntries)) {
+
+            if (suggestedEntries && Array.isArray(suggestedEntries) && suggestedEntries.length > 0) {
                 const formattedEntries = suggestedEntries.map((e: any) => ({
                     id: Math.random().toString(36).substr(2, 9),
                     account: e.account || '',
@@ -48,8 +53,25 @@ export default function AccountingVerification() {
                     debit: Number(e.debit) || 0,
                     credit: Number(e.credit) || 0,
                 }));
+
                 console.log("Setting entries:", formattedEntries);
                 setEntries(formattedEntries);
+
+                // Calculate totals for auto-save verification
+                const tDebit = formattedEntries.reduce((sum: number, e: any) => sum + e.debit, 0);
+                const tCredit = formattedEntries.reduce((sum: number, e: any) => sum + e.credit, 0);
+
+                // If perfectly balanced, auto-save to ensure user sees "success"
+                if (tDebit === tCredit && tDebit > 0) {
+                    // small delay to let UI render the table first
+                    setTimeout(async () => {
+                        const result = await saveJournalAction(formattedEntries, tDebit, tCredit);
+                        if (result.success) {
+                            // Use a non-blocking toast or similar if avail, for now just log
+                            console.log("Auto-committed balanced journal entry");
+                        }
+                    }, 500);
+                }
             }
         };
 
@@ -60,6 +82,23 @@ export default function AccountingVerification() {
     const totalDebit = entries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0);
     const totalCredit = entries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0);
     const isBalanced = totalDebit === totalCredit && totalDebit > 0;
+
+    // Hydrate from selected vault item
+    React.useEffect(() => {
+        if (props.selectedStartData && Array.isArray(props.selectedStartData)) {
+            const formattedEntries = props.selectedStartData.map((e: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                account: e.account || '',
+                description: e.description || '',
+                debit: Number(e.debit) || 0,
+                credit: Number(e.credit) || 0,
+            }));
+            setEntries(formattedEntries);
+        } else {
+            // Clear table if selected item has no journal data
+            setEntries([]);
+        }
+    }, [props.selectedStartData]);
 
     const handleSave = async () => {
         setIsSaving(true);

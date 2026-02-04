@@ -8,6 +8,9 @@
 import { saveAuditPaper, logAuditTrail, supabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { auditAgent } from "@/lib/ai";
+import { z } from "zod";
+import JSON5 from "json5";
+import { AuditPaperSchema, JournalEntrySchema } from "@/lib/types";
 
 export async function saveAIFindingAction(finding: {
     type: string;
@@ -57,71 +60,105 @@ export async function saveJournalAction(entries: any[], totalDebit: number, tota
 }
 
 export async function processDocumentAction(formData: FormData) {
+    console.log("SERVER ACTION: processDocumentAction started");
     try {
         const file = formData.get('file') as File;
         if (!file) throw new Error("No file uploaded");
+
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+        if (!validTypes.includes(file.type)) {
+            throw new Error(`Invalid file type: ${file.type}. Allowed: JPG, PNG, WEBP, PDF.`);
+        }
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
         if (!auditAgent) throw new Error("AI Agent not initialized");
 
+        // 1. AI Analysis with Internal Zod Helper
         const analysis = await auditAgent.analyzeDocument(buffer, file.type);
 
-        // Extract journal suggestions if present
+        // 2. Extract and Validate Findings
+        // We use the first found valid tag as the main finding to save
+        const mainTag = analysis.parsed_tags.find(t => ['RISK', 'AML', 'ENTRY', 'MEMO'].includes(t.type));
+
+        // 3. Extract and Validate Journal Entries
         const journalTag = analysis.parsed_tags.find(t => t.type === 'JOURNAL');
         let journalSuggestions = null;
+
         if (journalTag) {
+            let jsonString = "{}";
             try {
-                // Attempt to find the JSON object within the tag content (handling potential noise)
+                // Attempt clean parse
                 const jsonStart = journalTag.content.indexOf('{');
                 const jsonEnd = journalTag.content.lastIndexOf('}');
+
                 if (jsonStart !== -1 && jsonEnd !== -1) {
-                    const jsonString = journalTag.content.substring(jsonStart, jsonEnd + 1);
-                    journalSuggestions = JSON.parse(jsonString).entries;
+                    jsonString = journalTag.content.substring(jsonStart, jsonEnd + 1);
                 } else {
-                    journalSuggestions = JSON.parse(journalTag.content).entries;
+                    jsonString = journalTag.content;
                 }
+
+                // Use JSON5 for robust parsing (handles comments, trailing commas, missing quotes)
+                const rawObj = JSON5.parse(jsonString);
+
+                // Validate with Zod
+                const zResult = z.object({ entries: z.array(JournalEntrySchema) }).safeParse(rawObj);
+
+                if (zResult.success) {
+                    journalSuggestions = zResult.data.entries;
+                } else {
+                    console.warn("Journal Validation Failed:", zResult.error);
+                }
+
             } catch (e) {
-                console.warn("Failed to parse journal suggestion JSON:", journalTag.content, e);
+                console.warn("Journal JSON Parse Failed:", e);
+                console.warn("Failed JSON String:", jsonString);
             }
         }
 
-        // Auto-save finding to the vault
-        const mainFinding = analysis.parsed_tags.find(t => ['RISK', 'AML', 'ENTRY', 'MEMO'].includes(t.type));
+        // 4. Construct Final Paper
+        const findingType = (mainTag?.type as any) || 'MEMO';
+        const findingTitle = mainTag ? `AI Finding: ${file.name}` : `OCR Scan: ${file.name}`;
+        const findingContent = mainTag?.content || "General document scan performed.";
 
-        if (mainFinding) {
-            await saveAuditPaper({
-                type: mainFinding.type as any,
-                title: `AI Finding: ${file.name}`,
-                content_json: { detail: mainFinding.content, full_analysis: analysis.text, journal_suggestions: journalSuggestions },
-                integrity_hash: analysis.integrity_hash,
-            });
-        } else {
-            // Fallback: Save as a general MEMO if no specific tags were extracted
-            await saveAuditPaper({
-                type: 'MEMO',
-                title: `OCR Scan: ${file.name}`,
-                content_json: { detail: "General document scan performed. No specific risks or entries flagged.", full_analysis: analysis.text, journal_suggestions: journalSuggestions },
-                integrity_hash: analysis.integrity_hash,
-            });
-        }
+        // Validate complete paper before save
+        const workpaper = AuditPaperSchema.parse({
+            type: findingType,
+            title: findingTitle,
+            content_json: {
+                detail: findingContent,
+                full_analysis: analysis.text,
+                journal_suggestions: journalSuggestions
+            },
+            integrity_hash: analysis.integrity_hash
+        });
+
+        // 5. Persist to DB
+        await saveAuditPaper(workpaper);
 
         await logAuditTrail({
             event_type: 'OCR_DOCUMENT_PROCESSED',
-            metadata: { filename: file.name, hash: analysis.integrity_hash, tags_found: analysis.parsed_tags.length, has_journal: !!journalSuggestions }
+            metadata: {
+                filename: file.name,
+                hash: analysis.integrity_hash,
+                has_finding: !!mainTag,
+                has_journal: !!journalSuggestions
+            }
         });
 
         revalidatePath('/');
-        console.log("Document processed and saved successfully");
+        console.log("Document processed securely.");
         return { success: true, data: analysis, journalSuggestions, saved: true };
+
     } catch (error: any) {
-        console.error("OCR Process Error Detail:", {
-            message: error.message,
-            stack: error.stack,
-            cause: error.cause
-        });
-        return { success: false, error: error.message };
+        console.error("Secure Process Error:", error);
+        // Return a safe error object to client
+        if (error instanceof z.ZodError) {
+            return { success: false, error: "Validation Error: Data integrity check failed." };
+        }
+        return { success: false, error: error.message || "Internal System Error" };
     }
 }
 
