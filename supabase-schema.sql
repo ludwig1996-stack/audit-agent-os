@@ -59,3 +59,20 @@ ALTER TABLE audit_trails ENABLE ROW LEVEL SECURITY;
 -- Note: RLS Policies usually require 'profiles' or similar to link auth.uid() to org_id.
 -- Basic organization-based policy (example):
 -- CREATE POLICY org_access ON clients FOR ALL USING (org_id = (SELECT org_id FROM profiles WHERE id = auth.uid()));
+
+-- Allow anonymous/authenticated inserts for the demo
+CREATE POLICY "Allow public insert on audit_workpapers" 
+ON audit_workpapers FOR INSERT 
+WITH CHECK (true);
+
+CREATE POLICY "Allow public select on audit_workpapers" 
+ON audit_workpapers FOR SELECT 
+USING (true);
+
+CREATE POLICY "Allow public insert on audit_trails" 
+ON audit_trails FOR INSERT 
+WITH CHECK (true);
+
+CREATE POLICY "Allow public select on audit_trails" 
+ON audit_trails FOR SELECT 
+USING (true);
