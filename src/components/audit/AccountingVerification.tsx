@@ -14,10 +14,7 @@ interface EntryRow {
 }
 
 export default function AccountingVerification() {
-    const [entries, setEntries] = useState<EntryRow[]>([
-        { id: '1', account: '1930', description: 'Bank', debit: 1000, credit: 0 },
-        { id: '2', account: '3001', description: 'Sales', debit: 0, credit: 1000 },
-    ]);
+    const [entries, setEntries] = useState<EntryRow[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
     const addRow = () => {
@@ -115,6 +112,13 @@ export default function AccountingVerification() {
                         </tr>
                     </thead>
                     <tbody className="text-zinc-300 font-mono text-[11px]">
+                        {entries.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="py-8 text-center text-zinc-600 italic">
+                                    Waiting for AI Scan...
+                                </td>
+                            </tr>
+                        )}
                         {entries.map((entry) => (
                             <tr key={entry.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                                 <td className="py-1 px-1">

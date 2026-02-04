@@ -73,9 +73,17 @@ export async function processDocumentAction(formData: FormData) {
         let journalSuggestions = null;
         if (journalTag) {
             try {
-                journalSuggestions = JSON.parse(journalTag.content).entries;
+                // Attempt to find the JSON object within the tag content (handling potential noise)
+                const jsonStart = journalTag.content.indexOf('{');
+                const jsonEnd = journalTag.content.lastIndexOf('}');
+                if (jsonStart !== -1 && jsonEnd !== -1) {
+                    const jsonString = journalTag.content.substring(jsonStart, jsonEnd + 1);
+                    journalSuggestions = JSON.parse(jsonString).entries;
+                } else {
+                    journalSuggestions = JSON.parse(journalTag.content).entries;
+                }
             } catch (e) {
-                console.warn("Failed to parse journal suggestion JSON:", journalTag.content);
+                console.warn("Failed to parse journal suggestion JSON:", journalTag.content, e);
             }
         }
 
