@@ -73,41 +73,59 @@ export class AuditAgentService {
     }
 
     /**
-     * Multimodal Document Analysis (OCR + Audit)
-     * Now validated with Zod for strict type safety.
-     * Uses XML tags for robust output parsing.
+     * Programmatic Benford's Law Anomaly Detection (Skill)
+     * Calculates the probability of digit distribution to detect potential fraud.
+     */
+    static checkBenfordLaw(numbers: number[]): { isSuspicious: boolean, score: number, distribution: Record<number, number> } {
+        if (numbers.length < 10) return { isSuspicious: false, score: 0, distribution: {} };
+
+        const leadingDigits = numbers.map(n => parseInt(Math.abs(n).toString()[0])).filter(d => d > 0);
+        const counts: Record<number, number> = {};
+        for (let i = 1; i <= 9; i++) counts[i] = 0;
+        leadingDigits.forEach(d => counts[d]++);
+
+        const total = leadingDigits.length;
+        const observed = Object.values(counts).map(c => c / total);
+        const expected = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046];
+
+        // Simple Mean Absolute Deviation (MAD) for detection
+        let mad = 0;
+        observed.forEach((obs, i) => mad += Math.abs(obs - expected[i]));
+        mad = mad / 9;
+
+        return {
+            isSuspicious: mad > 0.015, // Threshold for potential anomaly
+            score: mad,
+            distribution: counts
+        };
+    }
+
+    /**
+     * Multimodal Document Analysis (OCR + Senior Audit)
+     * Upgraded to 'Senior Auditor' capability with ISA 240 skepticism.
      */
     async analyzeDocument(fileBuffer: Buffer, mimeType: string) {
-        // Advanced "Junior Auditor" Prompt
-        const prompt = `You are an expert Swedish Digital Auditor. 
-        Perform a comprehensive ISA-compliant audit of this financial document.
+        // Senior Auditor "Skeptical" Prompt
+        const prompt = `You are a Senior Digital Auditor with 10+ years of experience in ISA (International Standards on Auditing) and Swedish K3 GAAP.
+        Perform a high-stakes audit scan of this document. Adopt a 'Professional Skepticism' mindset (ISA 240).
         
-        CRITICAL INSTRUCTIONS:
-        1.  **Analyze Entity**: Identify 'Organisationsnummer', 'Momsregistreringsnummer' (VAT No), and Legal Name.
-        2.  **Verify Financials**: 
-            - Extract Total Amount, VAT Amount (Moms), and Currency (e.g., SEK, EUR).
-            - Check for arithmetic errors between standard VAT rates (25%, 12%, 6%) and the Total.
-        3.  **Accounting Classification (BAS 2024)**: 
-            - Suggest the most accurate 4-digit BAS account (e.g., 4000 for purchasing goods, 6540 for IT services).
-            - If uncertain, suggest account 6990 (Övriga externa kostnader).
-        4.  **Risk & Compliance (ISA 315/240)**:
-            - Flag if the document lacks valid VAT info.
-            - Flag if the vendor looks suspicious or missing details.
-            - Flag if the date is outside the current fiscal year (assume current year: ${new Date().getFullYear()}).
+        CORE CONTROL OBJECTIVES:
+        1.  **Fraud Detection (ISA 240)**: 
+            - Look for 'Management Override' risks: Perfectly round numbers (e.g., 50,000.00), unusual fonts, or missing vendor data.
+            - Apply **Benford's Law logic**: Are the leading digits of amounts in this document (and related items) distributed naturally?
+        2.  **Compliance Verification (ISA 315)**:
+            - Validate Org.nr (Swedish format: XXXXXX-XXXX) and VAT numbers.
+            - Check if the VAT rates (25%, 12%, 6%) are mathematically consistent with the Total.
+        3.  **Accounting Classification (BAS 2024)**:
+            - Map line items to 4-digit BAS accounts. Use 2440 for Accounts Payable.
+            - Balance the entry (Total Credit must equal Total Debit).
         
-        OUTPUT FORMATTING (STRICT XML/JSON):
-        - Wrap your executive summary in: <audit_summary>[TYPE]: [Concise Description]</audit_summary>
-        - TYPES: 
-            - [RISK]: Compliance issue or missing data. 
-            - [AML]: High-value transaction (>10k EUR) or suspicious entity. 
-            - [ENTRY]: Standard transaction suitable for booking.
-            - [MEMO]: Not an invoice (e.g., receipt, contract).
+        OUTPUT FORMATTING:
+        - Wrap executive finding in: <audit_summary>[TYPE]: [ISA Reference] - [Observation]</audit_summary>
+        - TYPES: [RISK], [AML], [ENTRY], [MEMO].
+        - Wrap journal in: <journal_json>{ "entries": [...] }</journal_json>
         
-        - Wrap proposed journal entry in: <journal_json>{ "entries": [...] }</journal_json>
-        - JSON Schema: { "account": "4000", "description": "Purchase of IT equipment", "debit": 0, "credit": 0 }
-        - IMPORTANT: You MUST balance the transaction. 
-            - Credit 2440 (Accounts Payable) or 1930 (Bank).
-            - Debit Expense Account (e.g., 4000) and Input VAT (2641).
+        IF SUSPICIOUS: Flag with [RISK] and describe the specific ISA standard being breached (e.g., ISA 240 - Suspiciously round numbers).
         `;
 
         const result = await this.visionModel.generateContent([
@@ -124,8 +142,19 @@ export class AuditAgentService {
         const hash = AuditAgentService.generateIntegrityHash(text);
         const tags = this.parseAuditTags(text);
 
-        // Debugging for "Junior Auditor" supervision
-        console.log(`[AUDIT-AGENT] Analyzed ${mimeType}. Type: ${tags.find(t => t.type !== 'JOURNAL')?.type || 'N/A'}`);
+        // Logic check: Try to extract numbers from text for programmatic Benford check
+        const amounts = text.match(/\b\d+[,.]\d{2}\b/g)?.map((s: string) => parseFloat(s.replace(',', '.'))) || [];
+        const benfordResult = AuditAgentService.checkBenfordLaw(amounts);
+
+        if (benfordResult.isSuspicious) {
+            console.warn(`[AUDIT-AGENT] Benford Anomaly Detected: score ${benfordResult.score}`);
+            tags.push({
+                type: 'RISK',
+                content: `ISA 240 Warning: Digit distribution anomaly detected (${(benfordResult.score * 100).toFixed(2)}% deviation). Potential manual manipulation of amounts.`
+            });
+        }
+
+        console.log(`[AUDIT-AGENT] Senior Analysis Complete. Type: ${tags.find(t => t.type !== 'JOURNAL')?.type || 'N/A'}`);
 
         return {
             text,
