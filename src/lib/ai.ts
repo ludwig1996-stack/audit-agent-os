@@ -78,20 +78,37 @@ export class AuditAgentService {
      * Uses XML tags for robust output parsing.
      */
     async analyzeDocument(fileBuffer: Buffer, mimeType: string) {
-        const prompt = `Perform a high-precision, detailed audit scan of this document. 
+        // Advanced "Junior Auditor" Prompt
+        const prompt = `You are an expert Swedish Digital Auditor. 
+        Perform a comprehensive ISA-compliant audit of this financial document.
         
-        EXTRACT AND SPECIFY:
-        1. Entity Identity: Legal name and Swedish Org.nr (if present).
-        2. Financial Data: Total Amount (incl. VAT), Currency, and Date of transaction.
-        3. Accounting Intent: Suggest Swedish 'BAS-kontoplan' accounts.
-        4. ISA-315 Risk Profile: Identify any compliance risks.
-        5. Journal Suggestion: Provide a structured JSON block for suggested journal entries.
+        CRITICAL INSTRUCTIONS:
+        1.  **Analyze Entity**: Identify 'Organisationsnummer', 'Momsregistreringsnummer' (VAT No), and Legal Name.
+        2.  **Verify Financials**: 
+            - Extract Total Amount, VAT Amount (Moms), and Currency (e.g., SEK, EUR).
+            - Check for arithmetic errors between standard VAT rates (25%, 12%, 6%) and the Total.
+        3.  **Accounting Classification (BAS 2024)**: 
+            - Suggest the most accurate 4-digit BAS account (e.g., 4000 for purchasing goods, 6540 for IT services).
+            - If uncertain, suggest account 6990 (Övriga externa kostnader).
+        4.  **Risk & Compliance (ISA 315/240)**:
+            - Flag if the document lacks valid VAT info.
+            - Flag if the vendor looks suspicious or missing details.
+            - Flag if the date is outside the current fiscal year (assume current year: ${new Date().getFullYear()}).
         
-        OUTPUT FORMATTING RULES:
-        - You MUST wrap your detailed summary in: <audit_summary>TYPE: Description...</audit_summary>
-        - TYPES: RISK, AML, ENTRY, or MEMO.
-        - To suggest journal entries, you MUST output a raw JSON block wrapped in: <journal_json>{"entries": [{"account": "...", "description": "...", "debit": 0, "credit": 0}]}</journal_json>
-        - Accounts MUST follow Swedish BAS-kontoplan.`;
+        OUTPUT FORMATTING (STRICT XML/JSON):
+        - Wrap your executive summary in: <audit_summary>[TYPE]: [Concise Description]</audit_summary>
+        - TYPES: 
+            - [RISK]: Compliance issue or missing data. 
+            - [AML]: High-value transaction (>10k EUR) or suspicious entity. 
+            - [ENTRY]: Standard transaction suitable for booking.
+            - [MEMO]: Not an invoice (e.g., receipt, contract).
+        
+        - Wrap proposed journal entry in: <journal_json>{ "entries": [...] }</journal_json>
+        - JSON Schema: { "account": "4000", "description": "Purchase of IT equipment", "debit": 0, "credit": 0 }
+        - IMPORTANT: You MUST balance the transaction. 
+            - Credit 2440 (Accounts Payable) or 1930 (Bank).
+            - Debit Expense Account (e.g., 4000) and Input VAT (2641).
+        `;
 
         const result = await this.visionModel.generateContent([
             prompt,
@@ -106,12 +123,14 @@ export class AuditAgentService {
         const text = result.response.text();
         const hash = AuditAgentService.generateIntegrityHash(text);
         const tags = this.parseAuditTags(text);
-        console.log("DEBUG: Extracted Tags:", tags);
+
+        // Debugging for "Junior Auditor" supervision
+        console.log(`[AUDIT-AGENT] Analyzed ${mimeType}. Type: ${tags.find(t => t.type !== 'JOURNAL')?.type || 'N/A'}`);
 
         return {
             text,
             integrity_hash: hash,
-            parsed_tags: tags // Now typed as ParsedFinding[] but partials
+            parsed_tags: tags
         };
     }
 
