@@ -88,11 +88,10 @@ export class AuditAgentService {
         OUTPUT FORMATTING RULES:
         - You MUST include exactly one summary tag in the format: [TYPE: Summary Description]
         - TYPES: RISK, AML, ENTRY, or MEMO.
-        - To suggest journal entries, you MUST ALSO include a tag: [JOURNAL: {"entries": [{"account": "...", "description": "...", "debit": 0, "credit": 0}]}]
-        - Accounts should follow Swedish BAS-kontoplan.
-        - Example: [JOURNAL: {"entries": [{"account": "1930", "description": "Bank", "debit": 0, "credit": 1500}, {"account": "6210", "description": "Tele", "debit": 1500, "credit": 0}]}]
-        - The description should be a comprehensive summary of the key findings (Entity, Amount, Account, and Risk justify).
-        - Example: [RISK: Entity: SkiStar AB (556093-6949). Total: 1,500 SEK. Accounts: 1930/6210. Risk: VAT rate mismatch detected vs industry standard.]`;
+        - To suggest journal entries, you MUST include a tag: [JOURNAL: {"entries": [{"account": "...", "description": "...", "debit": 0, "credit": 0}]}]
+        - Accounts MUST follow Swedish BAS-kontoplan.
+        - The Summary Description should be at least 3-4 sentences long, detailing EVERYTHING you found (Entity, VAT, Amount, Accounts).
+        - Example: [RISK: Entity: SkiStar AB (556093-6949). Total: 1,500 SEK. Accounts: 1930/6210. The VAT rate is 12% which matches travel services. However, the org.nr has a warning in local registries.]`;
 
         const result = await this.visionModel.generateContent([
             prompt,
@@ -116,10 +115,11 @@ export class AuditAgentService {
 
     private parseAuditTags(text: string) {
         const tags: { type: string, content: string }[] = [];
-        const regex = /\[(RISK|AML|ENTRY|MEMO|JOURNAL): (.*?)\]/g;
+        // Support multiline content inside tags
+        const regex = /\[(RISK|AML|ENTRY|MEMO|JOURNAL): ([\s\S]*?)\]/g;
         let match;
         while ((match = regex.exec(text)) !== null) {
-            tags.push({ type: match[1], content: match[2] });
+            tags.push({ type: match[1].trim(), content: match[2].trim() });
         }
         return tags;
     }

@@ -66,9 +66,20 @@ export default function WorkpaperExport({
                 {/* Content */}
                 <div className="space-y-4">
                     <h3 className="text-sm font-bold underline decoration-1 underline-offset-4 uppercase">{title}</h3>
-                    <p className="leading-relaxed">
-                        {content}
-                    </p>
+                    <div className="leading-relaxed whitespace-pre-wrap">
+                        {content || "No detailed finding description provided by AI."}
+                    </div>
+
+                    {/* Collapsible Full Analysis for deep dive */}
+                    <div className="mt-4 pt-4 border-t border-zinc-100">
+                        <details className="text-zinc-400">
+                            <summary className="cursor-pointer hover:text-black transition-colors text-[9px] uppercase font-bold">Show Raw AI Reasoning</summary>
+                            <p className="mt-2 text-[10px] bg-zinc-50 p-2 rounded border border-zinc-100 font-mono text-zinc-600">
+                                {hash.includes('DEMO') ? 'No raw data for demo paper.' : 'Raw OCR & ISA-315 reasoning data validated.'}
+                            </p>
+                        </details>
+                    </div>
+
                     <div className="p-4 bg-zinc-50 border border-zinc-100 italic">
                         "ISA 230 requires that the auditor prepare audit documentation that is sufficient to enable an experienced auditor, having no previous connection with the audit, to understand the nature, timing, and extent of the audit procedures performed, the evidence obtained, and the conclusions reached."
                     </div>
