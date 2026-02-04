@@ -14,14 +14,20 @@ export const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
  */
 export class AuditAgentService {
     private model: any;
+    private visionModel: any;
 
     constructor() {
         if (!genAI) throw new Error('AI Engine not initialized');
 
+        // Main reasoning model
         this.model = genAI.getGenerativeModel({
-            model: 'gemini-3-pro-preview',
-            // @ts-ignore - thinkingBudget is a newer feature
-            thinkingBudget: 8000
+            model: 'gemini-1.5-pro',
+            // @ts-ignore - thinkingBudget is a newer feature but 1.5 Pro is stable for vision
+        });
+
+        // Vision/OCR model
+        this.visionModel = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
         });
     }
 
@@ -49,14 +55,46 @@ export class AuditAgentService {
                 role: 'user',
                 parts: [{ text: `System Instruction: ${systemInstruction}\n\nContext: ${context}\n\nTask: ${prompt}` }]
             }],
-            // @ts-ignore - tools configuration
-            tools: [{ google_search_retrieval: {} }],
+            tools: [{ googleSearchRetrieval: {} } as any],
             generationConfig: {
-                temperature: 0.1, // High precision
+                temperature: 0.1,
                 topP: 0.8,
                 topK: 40,
             }
         });
+
+        const text = result.response.text();
+        const hash = AuditAgentService.generateIntegrityHash(text);
+
+        return {
+            text,
+            integrity_hash: hash,
+            parsed_tags: this.parseAuditTags(text)
+        };
+    }
+
+    /**
+     * Multimodal Document Analysis (OCR + Audit)
+     */
+    async analyzeDocument(fileBuffer: Buffer, mimeType: string) {
+        const prompt = `Perform a high-precision audit scan of this document. 
+        Focus on:
+        1. Identifying the entity and org.nr.
+        2. Detecting transaction amounts and dates.
+        3. Mapping to Swedish 'BAS-kontoplanen' (e.g., 1930, 3001, 2641).
+        4. Highlighting any ISA-315 compliance risks.
+        
+        Rules: Output MUST include at least one tag: [RISK:...], [AML:...], [ENTRY:...], or [MEMO:...].`;
+
+        const result = await this.visionModel.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    data: fileBuffer.toString('base64'),
+                    mimeType
+                }
+            }
+        ]);
 
         const text = result.response.text();
         const hash = AuditAgentService.generateIntegrityHash(text);
