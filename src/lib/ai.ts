@@ -76,14 +76,19 @@ export class AuditAgentService {
      * Multimodal Document Analysis (OCR + Audit)
      */
     async analyzeDocument(fileBuffer: Buffer, mimeType: string) {
-        const prompt = `Perform a high-precision audit scan of this document. 
-        Focus on:
-        1. Identifying the entity and org.nr.
-        2. Detecting transaction amounts and dates.
-        3. Mapping to Swedish 'BAS-kontoplanen' (e.g., 1930, 3001, 2641).
-        4. Highlighting any ISA-315 compliance risks.
+        const prompt = `Perform a high-precision, detailed audit scan of this document. 
         
-        Rules: Output MUST include at least one tag: [RISK:...], [AML:...], [ENTRY:...], or [MEMO:...].`;
+        EXTRACT AND SPECIFY:
+        1. Entity Identity: Legal name and Swedish Org.nr (if present).
+        2. Financial Data: Total Amount (incl. VAT), Currency, and Date of transaction.
+        3. Accounting Intent: Suggest Swedish 'BAS-kontoplan' accounts (e.g., 1930 Bank, 2641 Input VAT, 5xxx Expense).
+        4. ISA-315 Risk Profile: Identify any compliance risks or irregularities.
+        
+        OUTPUT FORMATTING RULES:
+        - You MUST include exactly one summary tag in the format: [TYPE: Summary Description]
+        - TYPES: RISK, AML, ENTRY, or MEMO.
+        - The description should be a comprehensive summary of the key findings (Entity, Amount, Account, and Risk justify).
+        - Example: [RISK: Entity: SkiStar AB (556093-6949). Total: 1,500 SEK. Accounts: 1930/6210. Risk: VAT rate mismatch detected vs industry standard.]`;
 
         const result = await this.visionModel.generateContent([
             prompt,
