@@ -9,6 +9,8 @@ export default function DocumentScanner() {
     const [isScanning, setIsScanning] = useState(false);
     const [scanComplete, setScanComplete] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [ledgerData, setLedgerData] = useState<string | null>(null);
+    const [ledgerFilename, setLedgerFilename] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,6 +21,16 @@ export default function DocumentScanner() {
             return;
         }
 
+        // Logic split: SIE4 vs Audit Evidence
+        if (file.name.toLowerCase().endsWith('.se') || file.name.toLowerCase().endsWith('.sie')) {
+            const text = await file.text();
+            setLedgerData(text);
+            setLedgerFilename(file.name);
+            alert(`Svensk bokföringsfil (SIE4) inläst: ${file.name}. Denna används nu som kontext vid skanning.`);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+
         console.log("CLIENT: File selected:", file.name);
         setIsScanning(true);
         setScanComplete(false);
@@ -26,6 +38,9 @@ export default function DocumentScanner() {
 
         const formData = new FormData();
         formData.append('file', file);
+        if (ledgerData) {
+            formData.append('ledgerContext', ledgerData);
+        }
 
         try {
             const result = await processDocumentAction(formData);
@@ -38,11 +53,9 @@ export default function DocumentScanner() {
                     }));
                 } else {
                     console.warn("DocumentScanner: No journal suggestions found in result");
-                    // Dispatch empty event to at least notify user "scan done" or handle in UI
                     window.dispatchEvent(new CustomEvent('ai-journal-suggested', {
                         detail: { entries: [] }
                     }));
-                    alert("Analysis complete, but no specific journal entries were generated.");
                 }
             } else {
                 setError(result.error || "Failed to process document");
@@ -67,19 +80,26 @@ export default function DocumentScanner() {
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 className="hidden"
-                accept="image/*,application/pdf"
+                accept=".se,.sie,image/*,application/pdf"
             />
 
             <div className="flex items-center justify-between">
                 <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold flex items-center gap-2">
                     <Upload size={12} />
-                    Real-time Audit Scanner
+                    Audit Evidence Scanner
                 </label>
-                {scanComplete && (
-                    <span className="text-[10px] text-terminal-green font-bold flex items-center gap-1 animate-pulse">
-                        <CheckCircle2 size={10} /> ANALYSIS SYNCED
-                    </span>
-                )}
+                <div className="flex gap-3">
+                    {ledgerData && (
+                        <span className="text-[10px] text-terminal-amber font-bold flex items-center gap-1">
+                            <Database size={10} /> SIE4 CONTEXT: {ledgerFilename}
+                        </span>
+                    )}
+                    {scanComplete && (
+                        <span className="text-[10px] text-terminal-green font-bold flex items-center gap-1 animate-pulse">
+                            <CheckCircle2 size={10} /> ANALYSIS SYNCED
+                        </span>
+                    )}
+                </div>
             </div>
 
             <div
@@ -97,7 +117,9 @@ export default function DocumentScanner() {
                             className="flex flex-col items-center gap-3"
                         >
                             <Loader2 className="animate-spin text-terminal-amber" size={24} />
-                            <div className="text-[10px] text-terminal-amber font-mono animate-pulse">AI MULTIMODAL ANALYSIS...</div>
+                            <div className="text-[10px] text-terminal-amber font-mono animate-pulse">
+                                {ledgerData ? "CROSS-REFERENCING WITH LEDGER..." : "AI MULTIMODAL ANALYSIS..."}
+                            </div>
 
                             {/* Scan Line effect */}
                             <motion.div
@@ -116,7 +138,7 @@ export default function DocumentScanner() {
                         >
                             <FileText className="text-zinc-700" size={32} />
                             <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter text-center px-4">
-                                Select Audit Evidence<br />to Scan & Vault
+                                {ledgerData ? "Select Invoice/Receipt to Match" : "Select SIE4 File or Audit Evidence"}
                             </div>
                         </motion.div>
                     )}

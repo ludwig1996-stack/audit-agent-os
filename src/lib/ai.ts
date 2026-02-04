@@ -102,13 +102,25 @@ export class AuditAgentService {
 
     /**
      * Multimodal Document Analysis (OCR + Senior Audit)
-     * Upgraded to 'Senior Auditor' capability with ISA 240 skepticism.
+     * Upgraded to 'Senior Auditor' capability with ISA 240 skepticism and Ledger Cross-Referencing.
      */
-    async analyzeDocument(fileBuffer: Buffer, mimeType: string) {
+    async analyzeDocument(fileBuffer: Buffer, mimeType: string, ledgerContext?: string) {
         // Senior Auditor "Skeptical" Prompt
         const prompt = `You are a Senior Digital Auditor with 10+ years of experience in ISA (International Standards on Auditing) and Swedish K3 GAAP.
         Perform a high-stakes audit scan of this document. Adopt a 'Professional Skepticism' mindset (ISA 240).
         
+        ${ledgerContext ? `
+        LEDGER CROSS-REFERENCE (CRITICAL):
+        The following segment from the Swedish General Ledger (SIE4) is provided for matching:
+        ---
+        ${ledgerContext}
+        ---
+        TASK: Compare the document data with the ledger. 
+        1. Does an entry with the same Amount/Vendor already exist? 
+        2. If yes, flag as [ENTRY: MATCH FOUND] and reference the voucher (#VER).
+        3. If the amounts differ, flag as [RISK: LEDGER MISMATCH].
+        ` : ''}
+
         CORE CONTROL OBJECTIVES:
         1.  **Fraud Detection (ISA 240)**: 
             - Look for 'Management Override' risks: Perfectly round numbers (e.g., 50,000.00), unusual fonts, or missing vendor data.
@@ -121,11 +133,9 @@ export class AuditAgentService {
             - Balance the entry (Total Credit must equal Total Debit).
         
         OUTPUT FORMATTING:
-        - Wrap executive finding in: <audit_summary>[TYPE]: [ISA Reference] - [Observation]</audit_summary>
+        - Wrap executive finding in: <audit_summary>[TYPE]: [ISA Reference/Match Index] - [Observation]</audit_summary>
         - TYPES: [RISK], [AML], [ENTRY], [MEMO].
         - Wrap journal in: <journal_json>{ "entries": [...] }</journal_json>
-        
-        IF SUSPICIOUS: Flag with [RISK] and describe the specific ISA standard being breached (e.g., ISA 240 - Suspiciously round numbers).
         `;
 
         const result = await this.visionModel.generateContent([

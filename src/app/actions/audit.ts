@@ -63,6 +63,8 @@ export async function processDocumentAction(formData: FormData) {
     console.log("SERVER ACTION: processDocumentAction started");
     try {
         const file = formData.get('file') as File;
+        const ledgerContext = formData.get('ledgerContext') as string | null;
+
         if (!file) throw new Error("No file uploaded");
 
         // Validate file type
@@ -76,8 +78,8 @@ export async function processDocumentAction(formData: FormData) {
 
         if (!auditAgent) throw new Error("AI Agent not initialized");
 
-        // 1. AI Analysis with Internal Zod Helper
-        const analysis = await auditAgent.analyzeDocument(buffer, file.type);
+        // 1. AI Analysis with Ledger Context (if any)
+        const analysis = await auditAgent.analyzeDocument(buffer, file.type, ledgerContext || undefined);
 
         // 2. Extract and Validate Findings
         // We use the first found valid tag as the main finding to save
