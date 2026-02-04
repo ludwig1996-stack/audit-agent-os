@@ -19,14 +19,14 @@ export class AuditAgentService {
     constructor() {
         if (!genAI) throw new Error('AI Engine not initialized');
 
-        // Main reasoning model (The highest precision experimental model)
+        // Main reasoning model (High-precision advanced model)
         this.model = genAI.getGenerativeModel({
-            model: 'gemini-2.0-pro-exp-02-05',
+            model: 'gemini-2.5-pro',
         });
 
-        // Vision / Thinking OCR model (The advanced reasoning-focused model)
+        // Vision / OCR model (Fast and intelligent multimodal model)
         this.visionModel = genAI.getGenerativeModel({
-            model: 'gemini-2.0-flash-thinking-exp-01-21',
+            model: 'gemini-2.5-flash',
         });
     }
 
