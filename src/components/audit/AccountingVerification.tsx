@@ -39,6 +39,25 @@ export default function AccountingVerification() {
         setEntries(entries.map(e => e.id === id ? { ...e, [field]: value } : e));
     };
 
+    React.useEffect(() => {
+        const handleAISuggestion = (event: any) => {
+            const suggestedEntries = event.detail.entries;
+            if (suggestedEntries && Array.isArray(suggestedEntries)) {
+                const formattedEntries = suggestedEntries.map((e: any) => ({
+                    id: Math.random().toString(36).substr(2, 9),
+                    account: e.account || '',
+                    description: e.description || '',
+                    debit: Number(e.debit) || 0,
+                    credit: Number(e.credit) || 0,
+                }));
+                setEntries(formattedEntries);
+            }
+        };
+
+        window.addEventListener('ai-journal-suggested', handleAISuggestion);
+        return () => window.removeEventListener('ai-journal-suggested', handleAISuggestion);
+    }, []);
+
     const totalDebit = entries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0);
     const totalCredit = entries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0);
     const isBalanced = totalDebit === totalCredit && totalDebit > 0;

@@ -68,13 +68,25 @@ export async function processDocumentAction(formData: FormData) {
 
         const analysis = await auditAgent.analyzeDocument(buffer, file.type);
 
+        // Extract journal suggestions if present
+        const journalTag = analysis.parsed_tags.find(t => t.type === 'JOURNAL');
+        let journalSuggestions = null;
+        if (journalTag) {
+            try {
+                journalSuggestions = JSON.parse(journalTag.content).entries;
+            } catch (e) {
+                console.warn("Failed to parse journal suggestion JSON:", journalTag.content);
+            }
+        }
+
         // Auto-save finding to the vault
-        if (analysis.parsed_tags.length > 0) {
-            const tag = analysis.parsed_tags[0];
+        const mainFinding = analysis.parsed_tags.find(t => ['RISK', 'AML', 'ENTRY', 'MEMO'].includes(t.type));
+
+        if (mainFinding) {
             await saveAuditPaper({
-                type: tag.type as any,
+                type: mainFinding.type as any,
                 title: `AI Finding: ${file.name}`,
-                content_json: { detail: tag.content, full_analysis: analysis.text },
+                content_json: { detail: mainFinding.content, full_analysis: analysis.text, journal_suggestions: journalSuggestions },
                 integrity_hash: analysis.integrity_hash,
             });
         } else {
@@ -82,19 +94,19 @@ export async function processDocumentAction(formData: FormData) {
             await saveAuditPaper({
                 type: 'MEMO',
                 title: `OCR Scan: ${file.name}`,
-                content_json: { detail: "General document scan performed. No specific risks or entries flagged.", full_analysis: analysis.text },
+                content_json: { detail: "General document scan performed. No specific risks or entries flagged.", full_analysis: analysis.text, journal_suggestions: journalSuggestions },
                 integrity_hash: analysis.integrity_hash,
             });
         }
 
         await logAuditTrail({
             event_type: 'OCR_DOCUMENT_PROCESSED',
-            metadata: { filename: file.name, hash: analysis.integrity_hash, tags_found: analysis.parsed_tags.length }
+            metadata: { filename: file.name, hash: analysis.integrity_hash, tags_found: analysis.parsed_tags.length, has_journal: !!journalSuggestions }
         });
 
         revalidatePath('/');
         console.log("Document processed and saved successfully");
-        return { success: true, data: analysis, saved: true };
+        return { success: true, data: analysis, journalSuggestions, saved: true };
     } catch (error: any) {
         console.error("OCR Process Error Detail:", {
             message: error.message,

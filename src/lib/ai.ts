@@ -83,10 +83,14 @@ export class AuditAgentService {
         2. Financial Data: Total Amount (incl. VAT), Currency, and Date of transaction.
         3. Accounting Intent: Suggest Swedish 'BAS-kontoplan' accounts (e.g., 1930 Bank, 2641 Input VAT, 5xxx Expense).
         4. ISA-315 Risk Profile: Identify any compliance risks or irregularities.
+        5. Journal Suggestion: Provide a structured JSON block for suggested journal entries.
         
         OUTPUT FORMATTING RULES:
         - You MUST include exactly one summary tag in the format: [TYPE: Summary Description]
         - TYPES: RISK, AML, ENTRY, or MEMO.
+        - To suggest journal entries, you MUST ALSO include a tag: [JOURNAL: {"entries": [{"account": "...", "description": "...", "debit": 0, "credit": 0}]}]
+        - Accounts should follow Swedish BAS-kontoplan.
+        - Example: [JOURNAL: {"entries": [{"account": "1930", "description": "Bank", "debit": 0, "credit": 1500}, {"account": "6210", "description": "Tele", "debit": 1500, "credit": 0}]}]
         - The description should be a comprehensive summary of the key findings (Entity, Amount, Account, and Risk justify).
         - Example: [RISK: Entity: SkiStar AB (556093-6949). Total: 1,500 SEK. Accounts: 1930/6210. Risk: VAT rate mismatch detected vs industry standard.]`;
 
@@ -112,7 +116,7 @@ export class AuditAgentService {
 
     private parseAuditTags(text: string) {
         const tags: { type: string, content: string }[] = [];
-        const regex = /\[(RISK|AML|ENTRY|MEMO): (.*?)\]/g;
+        const regex = /\[(RISK|AML|ENTRY|MEMO|JOURNAL): (.*?)\]/g;
         let match;
         while ((match = regex.exec(text)) !== null) {
             tags.push({ type: match[1], content: match[2] });

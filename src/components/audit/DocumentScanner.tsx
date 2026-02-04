@@ -26,6 +26,11 @@ export default function DocumentScanner() {
             const result = await processDocumentAction(formData);
             if (result.success) {
                 setScanComplete(true);
+                if (result.journalSuggestions) {
+                    window.dispatchEvent(new CustomEvent('ai-journal-suggested', {
+                        detail: { entries: result.journalSuggestions }
+                    }));
+                }
             } else {
                 setError(result.error || "Failed to process document");
             }
