@@ -1,6 +1,6 @@
 'use server'
 
-import { saveAuditPaper, logAuditTrail } from "@/lib/supabase-server";
+import { saveAuditPaper, logAuditTrail, supabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { auditAgent } from "@/lib/ai";
 
@@ -83,6 +83,50 @@ export async function processDocumentAction(formData: FormData) {
         return { success: true, data: analysis };
     } catch (error: any) {
         console.error("OCR Process Error:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function initializeUserAction() {
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
+        if (!user) throw new Error("Not authenticated");
+
+        // Check if user already has an organization
+        const { data: existingOrg } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('owner_id', user.id)
+            .maybeSingle();
+
+        if (!existingOrg) {
+            // Create a default organization for the new auditor
+            const { data: newOrg, error } = await supabase
+                .from('organizations')
+                .insert([{
+                    name: `Audit Firm of ${user.email?.split('@')[0]}`,
+                    owner_id: user.id
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // Create a first mock client
+            await supabase
+                .from('clients')
+                .insert([{
+                    organization_id: newOrg.id,
+                    name: 'First Growth Client AB',
+                    industry: 'SaaS',
+                    materiality_threshold: 50000
+                }]);
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Initialization Error:", error);
         return { success: false, error: error.message };
     }
 }
