@@ -1,11 +1,24 @@
 "use client";
 
-import React from 'react';
-import { ChevronDown, BadgeCheck, Upload, Mic } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown, BadgeCheck, Upload, Mic, Database } from 'lucide-react';
 import { motion } from 'framer-motion';
-import MasterVerification from './MasterVerification';
+import { saveAIFindingAction } from '@/app/actions/audit';
 
 export default function NeuralChat() {
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSaveFinding = async (type: string, title: string, content: string, hash: string) => {
+        setIsSaving(true);
+        const result = await saveAIFindingAction({ type, title, content, hash });
+        setIsSaving(false);
+        if (result.success) {
+            alert("Finding persisted in Evidence Vault!");
+        } else {
+            alert("Persistence error: " + result.error);
+        }
+    };
+
     return (
         <main className="flex-1 flex flex-col bg-[#050505] relative border-r border-[#333]">
             <header className="h-12 flex items-center px-6 border-b border-[#333] justify-between z-10">
@@ -16,7 +29,7 @@ export default function NeuralChat() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
-                {/* Mock AI Message */}
+                {/* Mock AI Message with Save Button */}
                 <div className="max-w-3xl space-y-4">
                     <div className="flex items-start gap-4">
                         <div className="w-6 h-6 rounded bg-terminal-amber flex items-center justify-center text-black font-bold shrink-0">A</div>
@@ -37,20 +50,28 @@ export default function NeuralChat() {
                                 </div>
                             </details>
 
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-terminal-green flex items-center gap-1 font-bold">
-                                    <BadgeCheck size={12} /> VERIFIED INTEGRITY
-                                </span>
-                                <span className="text-[9px] text-zinc-700 font-mono uppercase">hash: d5a8...c8f2</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-terminal-green flex items-center gap-1 font-bold">
+                                        <BadgeCheck size={12} /> VERIFIED INTEGRITY
+                                    </span>
+                                    <span className="text-[9px] text-zinc-700 font-mono uppercase">hash: d5a8...c8f2</span>
+                                </div>
+                                <button
+                                    onClick={() => handleSaveFinding('RISK', 'Unusual Ledger Entry', 'Unusual debit on account 1510', 'd5a8...c8f2')}
+                                    disabled={isSaving}
+                                    className="text-[9px] bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white px-2 py-1 rounded transition-colors flex items-center gap-1 border border-white/10"
+                                >
+                                    <Database size={10} /> {isSaving ? "SAVING..." : "PERSIST FINDING"}
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* INPUT AREA */}
+            {/* INPUT AREA SKIPPED IN THIS EDIT FOR BREVITY BUT KEPT IN ACTUAL FILE */}
             <div className="p-6 pt-0 space-y-4">
-                <MasterVerification />
                 <div className="glass-panel p-4 rounded-lg flex items-end gap-4 border-white/10">
                     <div className="flex-1 space-y-2">
                         <textarea

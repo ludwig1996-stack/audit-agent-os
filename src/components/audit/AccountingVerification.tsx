@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, CheckCircle2, AlertTriangle, Calculator } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, CheckCircle2, AlertTriangle, Calculator, Database } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { saveJournalAction } from '@/app/actions/audit';
 
 interface EntryRow {
     id: string;
@@ -17,6 +18,7 @@ export default function AccountingVerification() {
         { id: '1', account: '1930', description: 'Bank', debit: 1000, credit: 0 },
         { id: '2', account: '3001', description: 'Sales', debit: 0, credit: 1000 },
     ]);
+    const [isSaving, setIsSaving] = useState(false);
 
     const addRow = () => {
         const newRow: EntryRow = {
@@ -40,6 +42,17 @@ export default function AccountingVerification() {
     const totalDebit = entries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0);
     const totalCredit = entries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0);
     const isBalanced = totalDebit === totalCredit && totalDebit > 0;
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        const result = await saveJournalAction(entries, totalDebit, totalCredit);
+        setIsSaving(false);
+        if (result.success) {
+            alert("Journal entries committed to Evidence Vault!");
+        } else {
+            alert("Error saving: " + result.error);
+        }
+    };
 
     return (
         <div className="p-4 glass-panel rounded-lg border-white/5 bg-white/[0.01] space-y-4">
@@ -135,11 +148,20 @@ export default function AccountingVerification() {
                 <Plus size={12} /> Add Entry Row
             </button>
 
-            <div className="flex justify-between pt-2 border-t border-zinc-800 text-[11px] font-bold font-mono">
+            <div className="flex justify-between pt-2 border-t border-zinc-800 text-[11px] font-bold font-mono items-center">
                 <span className="text-zinc-500">TOTALS:</span>
-                <div className="flex gap-4">
+                <div className="flex gap-4 items-center">
                     <span className="text-terminal-green">DR: {totalDebit.toLocaleString()}</span>
                     <span className="text-terminal-amber">CR: {totalCredit.toLocaleString()}</span>
+                    {isBalanced && (
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="bg-terminal-green text-black px-2 py-1 rounded text-[9px] hover:bg-green-400 transition-colors flex items-center gap-1"
+                        >
+                            <Database size={10} /> {isSaving ? "SAVING..." : "COMMIT TO VAULT"}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
