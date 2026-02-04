@@ -14,6 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export default function EvidenceVault() {
     const [evidence, setEvidence] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
 
     const [error, setError] = useState<string | null>(null);
     const [debugInfo, setDebugInfo] = useState<string>("");
@@ -36,6 +37,9 @@ export default function EvidenceVault() {
             } else if (data) {
                 console.log(`Successfully fetched ${data.length} items`);
                 setEvidence(data);
+                if (data.length > 0 && !selectedItem) {
+                    setSelectedItem(data[0]);
+                }
                 setDebugInfo(`Fetched ${data.length} items`);
             }
         } catch (err: any) {
@@ -58,6 +62,7 @@ export default function EvidenceVault() {
                 { event: 'INSERT', schema: 'public', table: 'audit_workpapers' },
                 (payload) => {
                     setEvidence((prev) => [payload.new, ...prev]);
+                    setSelectedItem(payload.new); // Auto-select new findings
                 }
             )
             .subscribe();
@@ -82,7 +87,14 @@ export default function EvidenceVault() {
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide">
                 <AccountingVerification />
-                <WorkpaperExport />
+
+                {/* Formal Workpaper View */}
+                <WorkpaperExport
+                    title={selectedItem?.title}
+                    type={selectedItem?.type}
+                    content={selectedItem?.content_json?.detail}
+                    hash={selectedItem?.integrity_hash}
+                />
 
                 <div className="space-y-3 pt-2">
                     <div className="flex justify-between items-center px-1">
@@ -96,7 +108,12 @@ export default function EvidenceVault() {
                         <div className="text-center py-8 text-zinc-800 font-mono text-[9px] uppercase">No vault entries detected.</div>
                     ) : (
                         evidence.map(item => (
-                            <div key={item.id} className="p-3 bg-white/[0.02] border border-white/5 rounded hover:border-terminal-amber/30 transition-all cursor-pointer space-y-2 group">
+                            <div
+                                key={item.id}
+                                onClick={() => setSelectedItem(item)}
+                                className={`p-3 bg-white/[0.02] border rounded transition-all cursor-pointer space-y-2 group ${selectedItem?.id === item.id ? 'border-terminal-amber bg-terminal-amber/5' : 'border-white/5 hover:border-terminal-amber/30'
+                                    }`}
+                            >
                                 <div className="flex justify-between items-center">
                                     <span className={`px-1.5 py-0.5 rounded-[2px] text-[9px] font-bold ${item.type === 'RISK' ? 'bg-red-500/20 text-red-500' :
                                         item.type === 'AML' ? 'bg-terminal-amber/20 text-terminal-amber' :
