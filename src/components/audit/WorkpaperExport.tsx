@@ -9,6 +9,7 @@ interface WorkpaperProps {
     type?: string;
     content?: string;
     hash?: string;
+    fullAnalysis?: string;
 }
 
 export default function WorkpaperExport({
@@ -16,7 +17,8 @@ export default function WorkpaperExport({
     client = "Alpha Global AB",
     type = "RISK",
     content = "Analysis of internal controls reveals potential weaknesses in revenue recognition processes. Recommended action: detailed ledger review.",
-    hash = "sha256:d5a8c8f2b7e1f4d9a3b0c2e..."
+    hash = "sha256:d5a8c8f2b7e1f4d9a3b0c2e...",
+    fullAnalysis
 }: WorkpaperProps) {
 
     const handlePrint = () => {
@@ -75,7 +77,7 @@ export default function WorkpaperExport({
                         <details className="text-zinc-400">
                             <summary className="cursor-pointer hover:text-black transition-colors text-[9px] uppercase font-bold">Show Raw AI Reasoning</summary>
                             <p className="mt-2 text-[10px] bg-zinc-50 p-2 rounded border border-zinc-100 font-mono text-zinc-600">
-                                {hash.includes('DEMO') ? 'No raw data for demo paper.' : 'Raw OCR & ISA-315 reasoning data validated.'}
+                                {fullAnalysis || (hash.includes('DEMO') ? 'No raw data for demo paper.' : 'Raw OCR & ISA-315 reasoning data validated.')}
                             </p>
                         </details>
                     </div>

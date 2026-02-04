@@ -94,6 +94,7 @@ export default function EvidenceVault() {
                     type={selectedItem?.type}
                     content={selectedItem?.content_json?.detail}
                     hash={selectedItem?.integrity_hash}
+                    fullAnalysis={selectedItem?.content_json?.full_analysis}
                 />
 
                 <div className="space-y-3 pt-2">
