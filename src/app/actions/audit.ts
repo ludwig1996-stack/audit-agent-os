@@ -207,3 +207,44 @@ export async function initializeUserAction() {
         return { success: false, error: error.message };
     }
 }
+
+export async function signOffWorkpaperAction(paperId: string, status: 'APPROVED' | 'DISMISSED', userEmail: string) {
+    console.log(`SERVER: Signing off paper ${paperId} as ${status}`);
+    try {
+        // 1. Fetch current paper to preserve other content
+        const { data: paper, error: fetchError } = await supabase
+            .from('audit_workpapers')
+            .select('*')
+            .eq('id', paperId)
+            .single();
+
+        if (fetchError || !paper) throw new Error("Paper not found");
+
+        // 2. Update content_json with review metadata
+        const updatedContent = {
+            ...paper.content_json,
+            review_status: status,
+            reviewed_at: new Date().toISOString(),
+            reviewed_by_email: userEmail
+        };
+
+        const { error: updateError } = await supabase
+            .from('audit_workpapers')
+            .update({ content_json: updatedContent })
+            .eq('id', paperId);
+
+        if (updateError) throw updateError;
+
+        // 3. Log to audit trail
+        await logAuditTrail({
+            event_type: 'AUDIT_SIGN_OFF',
+            metadata: { paperId, status, userEmail }
+        });
+
+        revalidatePath('/');
+        return { success: true };
+    } catch (error: any) {
+        console.error("Sign-off Error:", error);
+        return { success: false, error: error.message };
+    }
+}

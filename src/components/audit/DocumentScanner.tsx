@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { processDocumentAction } from '@/app/actions/audit';
 

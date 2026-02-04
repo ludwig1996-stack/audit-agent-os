@@ -87,7 +87,7 @@ export default function EvidenceVault() {
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide">
                 <AccountingVerification
-                    selectedStartData={selectedItem?.content_json?.journal_suggestions}
+                    selectedItem={selectedItem}
                 />
 
                 {/* Formal Workpaper View */}
@@ -112,11 +112,13 @@ export default function EvidenceVault() {
                     ) : (
                         evidence.map(item => {
                             // Calculate balance status on the fly for the list view
-                            const entries = item.content_json?.journal_suggestions || [];
+                            const entries = item.content_json?.journal_suggestions ||
+                                item.content_json?.entries || [];
                             const dr = entries.reduce((s: number, e: any) => s + (Number(e.debit) || 0), 0);
                             const cr = entries.reduce((s: number, e: any) => s + (Number(e.credit) || 0), 0);
                             const isBalanced = entries.length > 0 && Math.abs(dr - cr) < 0.01;
                             const hasEntries = entries.length > 0;
+                            const reviewStatus = item.content_json?.review_status || 'PENDING';
 
                             return (
                                 <div
@@ -133,9 +135,14 @@ export default function EvidenceVault() {
                                                 }`}>
                                                 {item.type}
                                             </span>
-                                            {/* The "Red Dot" / Balance Indicator the user requested */}
-                                            {hasEntries && !isBalanced && (
-                                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" title="Unbalanced Journal" />
+                                            {/* Phase 3: Review Badge */}
+                                            {(item.type === 'RISK' || item.type === 'AML') && (
+                                                <span className={`text-[8px] font-bold uppercase ${reviewStatus === 'APPROVED' ? 'text-terminal-green' :
+                                                        reviewStatus === 'DISMISSED' ? 'text-zinc-600' :
+                                                            'text-terminal-amber py-1 px-1.5 rounded bg-terminal-amber/10 animate-pulse'
+                                                    }`}>
+                                                    {reviewStatus === 'PENDING' ? 'REVIEW REQUIRED' : reviewStatus}
+                                                </span>
                                             )}
                                         </div>
                                         <span className="text-zinc-600 text-[9px] font-mono group-hover:text-zinc-400 transition-colors uppercase">
@@ -144,16 +151,20 @@ export default function EvidenceVault() {
                                     </div>
                                     <div className="text-sm text-zinc-300 font-semibold group-hover:text-white transition-colors line-clamp-1">{item.title}</div>
                                     <div className="text-[10px] text-zinc-500 font-mono italic flex justify-between">
-                                        <span>
-                                            {new Intl.DateTimeFormat('sv-SE', {
-                                                year: 'numeric',
-                                                month: '2-digit',
-                                                day: '2-digit',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                                second: '2-digit'
-                                            }).format(new Date(item.created_at))}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span>
+                                                {new Intl.DateTimeFormat('sv-SE', {
+                                                    year: 'numeric',
+                                                    month: '2-digit',
+                                                    day: '2-digit',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                }).format(new Date(item.created_at))}
+                                            </span>
+                                            {hasEntries && !isBalanced && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                            )}
+                                        </div>
                                         {hasEntries && (
                                             <span className={isBalanced ? "text-zinc-600" : "text-red-400 font-bold"}>
                                                 {isBalanced ? "BALANCED" : "⚠️ UNBALANCED"}

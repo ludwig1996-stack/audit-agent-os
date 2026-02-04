@@ -32,8 +32,17 @@ export type ParsedFinding = z.infer<typeof ParsedFindingSchema>;
  * Schema for preserving audit data in Supabase.
  */
 export const AuditPaperSchema = z.object({
+    id: z.string().optional(),
     type: FindingTypeSchema,
     title: z.string(),
-    content_json: z.record(z.string(), z.any()), // JSONB in DB, validates structure before save
+    content_json: z.object({
+        detail: z.string().optional(),
+        full_analysis: z.string().optional(),
+        journal_suggestions: z.array(JournalEntrySchema).nullable().optional(),
+        review_status: z.enum(['PENDING', 'APPROVED', 'DISMISSED']).default('PENDING'),
+        reviewed_at: z.string().optional(),
+        reviewed_by_email: z.string().optional(),
+        ledger_match: z.any().optional(),
+    }).passthrough(),
     integrity_hash: z.string().length(64),
 });
