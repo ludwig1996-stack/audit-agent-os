@@ -3,6 +3,7 @@
 import React from 'react';
 import { ChevronDown, BadgeCheck, Upload, Mic } from 'lucide-react';
 import { motion } from 'framer-motion';
+import MasterVerification from './MasterVerification';
 
 export default function NeuralChat() {
     return (
@@ -48,7 +49,8 @@ export default function NeuralChat() {
             </div>
 
             {/* INPUT AREA */}
-            <div className="p-6 pt-0">
+            <div className="p-6 pt-0 space-y-4">
+                <MasterVerification />
                 <div className="glass-panel p-4 rounded-lg flex items-end gap-4 border-white/10">
                     <div className="flex-1 space-y-2">
                         <textarea

@@ -4,6 +4,7 @@ import React from 'react';
 import { Shield, Activity, Lock } from 'lucide-react';
 import DocumentScanner from './DocumentScanner';
 import VoiceAuditor from './VoiceAuditor';
+import AMLWatchlistScanner from './AMLWatchlistScanner';
 
 export default function SecurityMonitor() {
     return (
@@ -38,6 +39,10 @@ export default function SecurityMonitor() {
                         <span>ISA-315 Risk Assesment</span>
                     </div>
                 </div>
+            </div>
+
+            <div className="py-6 border-t border-zinc-800">
+                <AMLWatchlistScanner />
             </div>
 
             <div className="mt-auto pt-4 border-t border-zinc-800 space-y-4">
