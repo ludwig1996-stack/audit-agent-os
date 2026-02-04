@@ -1,5 +1,10 @@
 'use server'
 
+/**
+ * Enterprise Audit Actions Module
+ * Handles document processing, journal entries, and vault integration.
+ */
+
 import { saveAuditPaper, logAuditTrail, supabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { auditAgent } from "@/lib/ai";
