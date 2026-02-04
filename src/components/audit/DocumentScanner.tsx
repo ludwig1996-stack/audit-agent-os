@@ -140,7 +140,7 @@ export default function DocumentScanner() {
             </AnimatePresence>
 
             <div className="grid grid-cols-2 gap-2">
-                <div className="text-[10px] text-zinc-600 font-mono">PDF/PNG/JPG Support</div>
+                <div className="text-[10px] text-zinc-600 font-mono italic">CONTINUOUS MODE: <span className="text-terminal-green">ACTIVE</span></div>
                 <div className="text-[10px] text-terminal-amber font-bold text-right italic">Powered by Gemini 2.5</div>
             </div>
         </div>

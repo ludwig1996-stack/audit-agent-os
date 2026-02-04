@@ -5,14 +5,17 @@ import { Shield, Activity, Lock } from 'lucide-react';
 import DocumentScanner from './DocumentScanner';
 import VoiceAuditor from './VoiceAuditor';
 import AMLWatchlistScanner from './AMLWatchlistScanner';
+import RealtimeAgentStatus from './RealtimeAgentStatus';
 
 export default function SecurityMonitor() {
     return (
-        <aside className="w-[18%] glass-panel flex flex-col p-4 border-r border-[#333]">
-            <div className="flex items-center gap-2 mb-8 text-terminal-amber font-bold text-sm tracking-tighter">
+        <aside className="w-[18%] glass-panel flex flex-col p-4 border-r border-[#333] gap-4">
+            <div className="flex items-center gap-2 text-terminal-amber font-bold text-sm tracking-tighter">
                 <Shield size={18} />
                 <span>SECURITY MONITOR</span>
             </div>
+
+            <RealtimeAgentStatus />
 
             <div className="space-y-6 flex-1 overflow-y-auto">
                 <div className="space-y-2">
