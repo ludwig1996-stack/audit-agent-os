@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Faktura - Nordic Tech Solutions</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f4f4f4; display: flex; justify-content: center; padding: 40px; }
+        .invoice-card { background: white; width: 800px; padding: 60px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 8px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; pb: 20px; mb: 40px; }
+        .vendor-info h1 { margin: 0; color: #1a1a1a; font-size: 24px; }
+        .details { display: grid; grid-cols-2: 1fr 1fr; gap: 40px; mb: 40px; }
+        table { w-full: 100%; border-collapse: collapse; margin-bottom: 40px; }
+        th { text-align: left; padding: 12px; border-bottom: 2px solid #eee; color: #666; font-size: 12px; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #eee; color: #333; }
+        .totals { float: right; width: 300px; }
+        .totals div { display: flex; justify-content: space-between; padding: 8px 0; }
+        .total-row { border-top: 2px solid #1a1a1a; font-weight: bold; font-size: 18px; margin-top: 10px; pt: 10px; }
+        .footer { mt: 100px; color: #999; font-size: 10px; text-align: center; border-top: 1px solid #eee; pt: 20px; }
+    </style>
+</head>
+<body>
+    <div class="invoice-card">
+        <div class="header">
+            <div class="vendor-info">
+                <h1>Nordic Tech Solutions AB</h1>
+                <p>Sveavägen 45, 111 34 Stockholm<br>Org.nr: 556123-4567</p>
+            </div>
+            <div class="invoice-meta" style="text-align: right;">
+                <h2 style="margin: 0;">FAKTURA</h2>
+                <p>Fakturanummer: #2026-001<br>Datum: 2026-02-04</p>
+            </div>
+        </div>
+
+        <div class="details">
+            <div>
+                <strong style="font-size: 12px; color: #666; text-transform: uppercase;">Faktureras till:</strong>
+                <p>Alpha Global AB<br>Gustav Adolfs Torg 1<br>111 52 Stockholm</p>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Beskrivning</th>
+                    <th style="text-align: right;">Antal</th>
+                    <th style="text-align: right;">Pris</th>
+                    <th style="text-align: right;">Summa</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Enterprise AI Cloud Subscription (Månad)</td>
+                    <td style="text-align: right;">1</td>
+                    <td style="text-align: right;">8 000,00</td>
+                    <td style="text-align: right;">8 000,00</td>
+                </tr>
+                <tr>
+                    <td>Säkerhetsrevision - Licens</td>
+                    <td style="text-align: right;">1</td>
+                    <td style="text-align: right;">2 000,00</td>
+                    <td style="text-align: right;">2 000,00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div><span>Netto:</span> <span>10 000,00 SEK</span></div>
+            <div><span>Moms (25%):</span> <span>2 500,00 SEK</span></div>
+            <div class="total-row"><span>Att betala:</span> <span>12 500,00 SEK</span></div>
+        </div>
+
+        <div style="clear: both;"></div>
+
+        <div class="footer">
+            Bankgiro: 123-4567 | Webb: nordictech.se | Betalningsvillkor: 30 dagar netto
+        </div>
+    </div>
+</body>
+</html>
