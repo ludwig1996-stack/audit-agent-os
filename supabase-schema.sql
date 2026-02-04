@@ -76,3 +76,8 @@ WITH CHECK (true);
 CREATE POLICY "Allow public select on audit_trails" 
 ON audit_trails FOR SELECT 
 USING (true);
+
+-- Enable Real-time replication
+-- Run these in Supabase SQL Editor:
+-- alter publication supabase_realtime add table audit_workpapers;
+-- alter publication supabase_realtime add table audit_trails;

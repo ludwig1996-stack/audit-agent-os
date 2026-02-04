@@ -63,21 +63,29 @@ export async function processDocumentAction(formData: FormData) {
 
         const analysis = await auditAgent.analyzeDocument(buffer, file.type);
 
-        // Auto-save the first finding to the vault for demo purposes
+        // Auto-save finding to the vault
         if (analysis.parsed_tags.length > 0) {
             const tag = analysis.parsed_tags[0];
             await saveAuditPaper({
                 type: tag.type as any,
-                title: `OCR Scan: ${file.name}`,
+                title: `AI Finding: ${file.name}`,
                 content_json: { detail: tag.content, full_analysis: analysis.text },
                 integrity_hash: analysis.integrity_hash,
             });
-
-            await logAuditTrail({
-                event_type: 'OCR_DOCUMENT_PROCESSED',
-                metadata: { filename: file.name, hash: analysis.integrity_hash }
+        } else {
+            // Fallback: Save as a general MEMO if no specific tags were extracted
+            await saveAuditPaper({
+                type: 'MEMO',
+                title: `OCR Scan: ${file.name}`,
+                content_json: { detail: "General document scan performed. No specific risks or entries flagged.", full_analysis: analysis.text },
+                integrity_hash: analysis.integrity_hash,
             });
         }
+
+        await logAuditTrail({
+            event_type: 'OCR_DOCUMENT_PROCESSED',
+            metadata: { filename: file.name, hash: analysis.integrity_hash, tags_found: analysis.parsed_tags.length }
+        });
 
         revalidatePath('/');
         return { success: true, data: analysis };
