@@ -38,6 +38,7 @@ export default function AccountingVerification() {
 
     React.useEffect(() => {
         const handleAISuggestion = (event: any) => {
+            console.log("AccountingVerification received ai-journal-suggested event:", event.detail);
             const suggestedEntries = event.detail.entries;
             if (suggestedEntries && Array.isArray(suggestedEntries)) {
                 const formattedEntries = suggestedEntries.map((e: any) => ({
@@ -47,6 +48,7 @@ export default function AccountingVerification() {
                     debit: Number(e.debit) || 0,
                     credit: Number(e.credit) || 0,
                 }));
+                console.log("Setting entries:", formattedEntries);
                 setEntries(formattedEntries);
             }
         };

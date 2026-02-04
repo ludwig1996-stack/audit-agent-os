@@ -27,9 +27,12 @@ export default function DocumentScanner() {
             if (result.success) {
                 setScanComplete(true);
                 if (result.journalSuggestions) {
+                    console.log("DocumentScanner: Dispatching ai-journal-suggested:", result.journalSuggestions);
                     window.dispatchEvent(new CustomEvent('ai-journal-suggested', {
                         detail: { entries: result.journalSuggestions }
                     }));
+                } else {
+                    console.warn("DocumentScanner: No journal suggestions found in result");
                 }
             } else {
                 setError(result.error || "Failed to process document");
