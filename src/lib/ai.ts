@@ -21,13 +21,12 @@ export class AuditAgentService {
 
         // Main reasoning model
         this.model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-pro',
-            // @ts-ignore - thinkingBudget is a newer feature but 1.5 Pro is stable for vision
+            model: 'gemini-1.5-pro-latest',
         });
 
         // Vision/OCR model
         this.visionModel = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-1.5-flash-latest',
         });
     }
 
