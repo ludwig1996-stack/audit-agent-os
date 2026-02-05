@@ -100,6 +100,20 @@ export default function EvidenceVault() {
                 />
 
                 <div className="space-y-3 pt-2">
+                    {/* Materiality Meter (Phase 4) */}
+                    <div className="px-1 py-3 bg-white/[0.03] border border-white/5 rounded-md space-y-2">
+                        <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+                            <span>Organizational Materiality</span>
+                            <span className="text-terminal-amber">50,000 SEK</span>
+                        </div>
+                        <div className="h-1 bg-zinc-900 rounded-full overflow-hidden flex">
+                            <div className="w-[70%] h-full bg-terminal-green shadow-[0_0_8px_rgba(40,230,120,0.5)]" />
+                        </div>
+                        <div className="text-[8px] text-zinc-700 font-mono italic">
+                            Findings above threshold require mandatory SENIOR partner review.
+                        </div>
+                    </div>
+
                     <div className="flex justify-between items-center px-1">
                         <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Real-time Findings</label>
                         <button onClick={fetchEvidence} className="text-[8px] text-zinc-700 hover:text-zinc-500 font-mono uppercase">Refresh</button>
@@ -119,13 +133,14 @@ export default function EvidenceVault() {
                             const isBalanced = entries.length > 0 && Math.abs(dr - cr) < 0.01;
                             const hasEntries = entries.length > 0;
                             const reviewStatus = item.content_json?.review_status || 'PENDING';
+                            const isMaterial = item.content_json?.is_material || false;
 
                             return (
                                 <div
                                     key={item.id}
                                     onClick={() => setSelectedItem(item)}
                                     className={`p-3 bg-white/[0.02] border rounded transition-all cursor-pointer space-y-2 group ${selectedItem?.id === item.id ? 'border-terminal-amber bg-terminal-amber/5' : 'border-white/5 hover:border-terminal-amber/30'
-                                        }`}
+                                        } ${isMaterial ? 'border-red-900/40 bg-red-950/5' : ''}`}
                                 >
                                     <div className="flex justify-between items-center">
                                         <div className="flex items-center gap-2">
@@ -135,11 +150,17 @@ export default function EvidenceVault() {
                                                 }`}>
                                                 {item.type}
                                             </span>
+                                            {/* Materiality Badge (Phase 4) */}
+                                            {isMaterial && (
+                                                <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-black rounded-sm animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.4)]">
+                                                    MATERIAL
+                                                </span>
+                                            )}
                                             {/* Phase 3: Review Badge */}
                                             {(item.type === 'RISK' || item.type === 'AML') && (
                                                 <span className={`text-[8px] font-bold uppercase ${reviewStatus === 'APPROVED' ? 'text-terminal-green' :
-                                                        reviewStatus === 'DISMISSED' ? 'text-zinc-600' :
-                                                            'text-terminal-amber py-1 px-1.5 rounded bg-terminal-amber/10 animate-pulse'
+                                                    reviewStatus === 'DISMISSED' ? 'text-zinc-600' :
+                                                        'text-terminal-amber py-1 px-1.5 rounded bg-terminal-amber/10 animate-pulse'
                                                     }`}>
                                                     {reviewStatus === 'PENDING' ? 'REVIEW REQUIRED' : reviewStatus}
                                                 </span>

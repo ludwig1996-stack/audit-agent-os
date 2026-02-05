@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import crypto from 'crypto';
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -34,7 +35,7 @@ export class AuditAgentService {
      * Generate a unique SHA-256 hash for data integrity
      */
     static generateIntegrityHash(content: string): string {
-        return require('crypto')
+        return crypto
             .createHash('sha256')
             .update(content)
             .digest('hex');
@@ -103,12 +104,16 @@ export class AuditAgentService {
     /**
      * Multimodal Document Analysis (OCR + Senior Audit)
      * Upgraded to 'Senior Auditor' capability with ISA 240 skepticism and Ledger Cross-Referencing.
+     * Materiality Threshold: Contextual threshold for risk significance.
      */
-    async analyzeDocument(fileBuffer: Buffer, mimeType: string, ledgerContext?: string) {
+    async analyzeDocument(fileBuffer: Buffer, mimeType: string, ledgerContext?: string, materialityThreshold: number = 50000) {
         // Senior Auditor "Skeptical" Prompt
         const prompt = `You are a Senior Digital Auditor with 10+ years of experience in ISA (International Standards on Auditing) and Swedish K3 GAAP.
         Perform a high-stakes audit scan of this document. Adopt a 'Professional Skepticism' mindset (ISA 240).
         
+        MATERIALITY LEVEL: ${materialityThreshold} SEK. 
+        Findings above this amount are considered material [MATERIAL] and must be prioritized.
+
         ${ledgerContext ? `
         LEDGER CROSS-REFERENCE (CRITICAL):
         The following segment from the Swedish General Ledger (SIE4) is provided for matching:
@@ -134,6 +139,7 @@ export class AuditAgentService {
         
         OUTPUT FORMATTING:
         - Wrap executive finding in: <audit_summary>[TYPE]: [ISA Reference/Match Index] - [Observation]</audit_summary>
+        - If finding is above ${materialityThreshold}, append [MATERIAL] to the summary.
         - TYPES: [RISK], [AML], [ENTRY], [MEMO].
         - Wrap journal in: <journal_json>{ "entries": [...] }</journal_json>
         `;
@@ -150,7 +156,7 @@ export class AuditAgentService {
 
         const text = result.response.text();
         const hash = AuditAgentService.generateIntegrityHash(text);
-        const tags = this.parseAuditTags(text);
+        const tags = this.parseAuditTags(text, materialityThreshold);
 
         // Logic check: Try to extract numbers from text for programmatic Benford check
         const amounts = text.match(/\b\d+[,.]\d{2}\b/g)?.map((s: string) => parseFloat(s.replace(',', '.'))) || [];
@@ -173,8 +179,8 @@ export class AuditAgentService {
         };
     }
 
-    private parseAuditTags(text: string) {
-        const tags: { type: string, content: string }[] = [];
+    private parseAuditTags(text: string, materialityThreshold: number = 50000) {
+        const tags: { type: string, content: string, isMaterial?: boolean }[] = [];
 
         // 1. Extract Summary Tag (XML style)
         const summaryMatch = text.match(/<audit_summary>([\s\S]*?)<\/audit_summary>/);
@@ -187,9 +193,19 @@ export class AuditAgentService {
                 // Validate type
                 const validTypes = ['RISK', 'AML', 'ENTRY', 'MEMO'];
                 const safeType = validTypes.includes(type) ? type : 'MEMO';
-                tags.push({ type: safeType, content: rawContent.substring(type.length + 1).trim() });
+                let content = rawContent.substring(type.length + 1).trim();
+
+                // Materiality logic: check for [MATERIAL] flag in AI output or high amounts
+                let isMaterial = content.includes('[MATERIAL]');
+                const amountMatch = content.match(/\b\d+[,.]\d{2,}\b/);
+                if (amountMatch) {
+                    const amount = parseFloat(amountMatch[0].replace(',', '.'));
+                    if (amount >= materialityThreshold) isMaterial = true;
+                }
+
+                tags.push({ type: safeType, content, isMaterial });
             } else {
-                tags.push({ type: 'MEMO', content: rawContent });
+                tags.push({ type: 'MEMO', content: rawContent, isMaterial: false });
             }
         }
 

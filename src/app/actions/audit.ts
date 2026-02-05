@@ -78,51 +78,43 @@ export async function processDocumentAction(formData: FormData) {
 
         if (!auditAgent) throw new Error("AI Agent not initialized");
 
-        // 1. AI Analysis with Ledger Context (if any)
-        const analysis = await auditAgent.analyzeDocument(buffer, file.type, ledgerContext || undefined);
+        // 1. Fetch Materiality context (Mocked but ready for DB)
+        const materialityThreshold = 50000; // SEK - This would come from organization table
 
-        // 2. Extract and Validate Findings
-        // We use the first found valid tag as the main finding to save
+        // 2. AI Analysis with Ledger & Materiality Context
+        const analysis = await auditAgent.analyzeDocument(buffer, file.type, ledgerContext || undefined, materialityThreshold);
+
+        // 3. Extract and Validate Findings (with materiality mapping)
         const mainTag = analysis.parsed_tags.find(t => ['RISK', 'AML', 'ENTRY', 'MEMO'].includes(t.type));
+        const isMaterial = mainTag?.isMaterial || false;
 
-        // 3. Extract and Validate Journal Entries
+        // 4. Extract and Validate Journal Entries
         const journalTag = analysis.parsed_tags.find(t => t.type === 'JOURNAL');
         let journalSuggestions = null;
 
         if (journalTag) {
             let jsonString = "{}";
             try {
-                // Attempt clean parse
                 const jsonStart = journalTag.content.indexOf('{');
                 const jsonEnd = journalTag.content.lastIndexOf('}');
-
                 if (jsonStart !== -1 && jsonEnd !== -1) {
                     jsonString = journalTag.content.substring(jsonStart, jsonEnd + 1);
                 } else {
                     jsonString = journalTag.content;
                 }
-
-                // Use JSON5 for robust parsing (handles comments, trailing commas, missing quotes)
                 const rawObj = JSON5.parse(jsonString);
-
-                // Validate with Zod
                 const zResult = z.object({ entries: z.array(JournalEntrySchema) }).safeParse(rawObj);
-
                 if (zResult.success) {
                     journalSuggestions = zResult.data.entries;
-                } else {
-                    console.warn("Journal Validation Failed:", zResult.error);
                 }
-
             } catch (e) {
                 console.warn("Journal JSON Parse Failed:", e);
-                console.warn("Failed JSON String:", jsonString);
             }
         }
 
-        // 4. Construct Final Paper
+        // 5. Construct Final Paper
         const findingType = (mainTag?.type as any) || 'MEMO';
-        const findingTitle = mainTag ? `AI Finding: ${file.name}` : `OCR Scan: ${file.name}`;
+        const findingTitle = mainTag ? `AI Finding: ${file.name}${isMaterial ? ' [MATERIAL]' : ''}` : `OCR Scan: ${file.name}`;
         const findingContent = mainTag?.content || "General document scan performed.";
 
         // Validate complete paper before save
@@ -132,12 +124,14 @@ export async function processDocumentAction(formData: FormData) {
             content_json: {
                 detail: findingContent,
                 full_analysis: analysis.text,
-                journal_suggestions: journalSuggestions
+                journal_suggestions: journalSuggestions,
+                is_material: isMaterial,
+                materiality_limit: materialityThreshold
             },
             integrity_hash: analysis.integrity_hash
         });
 
-        // 5. Persist to DB
+        // 6. Persist to DB
         await saveAuditPaper(workpaper);
 
         await logAuditTrail({
@@ -146,7 +140,8 @@ export async function processDocumentAction(formData: FormData) {
                 filename: file.name,
                 hash: analysis.integrity_hash,
                 has_finding: !!mainTag,
-                has_journal: !!journalSuggestions
+                has_journal: !!journalSuggestions,
+                is_material: isMaterial
             }
         });
 

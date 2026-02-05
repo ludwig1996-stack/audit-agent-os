@@ -6,6 +6,7 @@ import DocumentScanner from './DocumentScanner';
 import VoiceAuditor from './VoiceAuditor';
 import AMLWatchlistScanner from './AMLWatchlistScanner';
 import RealtimeAgentStatus from './RealtimeAgentStatus';
+import RiskTrendAnalysis from './RiskTrendAnalysis';
 
 export default function SecurityMonitor() {
     return (
@@ -16,6 +17,8 @@ export default function SecurityMonitor() {
             </div>
 
             <RealtimeAgentStatus />
+
+            <RiskTrendAnalysis />
 
             <div className="space-y-6 flex-1 overflow-y-auto">
                 <div className="space-y-2">
